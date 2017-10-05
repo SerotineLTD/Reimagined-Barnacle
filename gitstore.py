@@ -9,64 +9,67 @@ from collections import deque
 PATH_TO_REPO = "/tmp/gitstore.git"
 PATH_SEPERATOR = "/"
 
-def author(name,email):
-	return pygit2.Signature(name,email)
+class GitStore:
+	def __init__(self,path=PATH_TO_REPO):
+		self.repoPath = path
+		if(not os.path.isdir(path)):
+			pygit2.init_repository(path,True)
+		self.repo = pygit2.Repository(path)
 
-def find_last_commit():
-	master = repo.lookup_reference("refs/heads/master")
-	last_commit = master.get_object()
-	return last_commit
+	def author(self,name,email):
+		return pygit2.Signature(name,email)
 
-def list_files(path):
-	try:
-		last_commit = find_last_commit()
-		files = []
-		for entry in last_commit.tree:
-			files.append(entry.name)
-		return files
-	except KeyError:
-		return []
+	def find_last_commit(self):
+		master = self.repo.lookup_reference("refs/heads/master")
+		last_commit = master.get_object()
+		return last_commit
 
-def new_commit(treeId,author,reason):
-	try:
-		last_commit = find_last_commit()
-		repo.create_commit('refs/heads/master',author,author,reason,treeId,[last_commit.id])
-	except KeyError:
-		repo.create_commit('refs/heads/master',author,author,reason,treeId,[])
+	def list_files(self,path):
+		try:
+			last_commit = self.find_last_commit()
+			files = []
+			for entry in last_commit.tree:
+				files.append(entry.name)
+			return files
+		except KeyError:
+			return []
 
-def add_file(path,data,author,reason,treeBuilder=None):
-	pathParts = deque(path.split(PATH_SEPERATOR))
-	name = pathParts.popleft()
-	if len(pathParts) < 1:
-		if treeBuilder.get(name)!=None:
-			raise ValueError(name+" already exists")
-		id = repo.create_blob(data)
-		treeBuilder.insert(name,id,pygit2.GIT_FILEMODE_BLOB)
-		return treeBuilder
-	else:
-		sub_dir_path = PATH_SEPERATOR.join(pathParts)
-		if name == "":
-			# We add to root
-			try:
-				last_commit = find_last_commit()
-				treeBuilder = repo.TreeBuilder(last_commit.tree)
-			except KeyError:
-				treeBuilder = repo.TreeBuilder()
-			treeBuilder = add_file(sub_dir_path,data,author,reason,treeBuilder)
-			treeId = treeBuilder.write()
-			new_commit(treeId,author,reason)
-		else:
-			# we add to a named dir
-			nextTree = repo.TreeBuilder()
-			nextTree = add_file(sub_dir_path,data,author,reason,nextTree)
-			treeId = nextTree.write()
-			treeBuilder.insert(name,treeId,pygit2.GIT_FILEMODE_TREE)
+	def new_commit(self,treeId,author,reason):
+		try:
+			last_commit = self.find_last_commit()
+			self.repo.create_commit('refs/heads/master',author,author,reason,treeId,[last_commit.id])
+		except KeyError:
+			self.repo.create_commit('refs/heads/master',author,author,reason,treeId,[])
+
+	def add_file(self,path,data,author,reason,treeBuilder=None):
+		pathParts = deque(path.split(PATH_SEPERATOR))
+		name = pathParts.popleft()
+		if len(pathParts) < 1:
+			if treeBuilder.get(name)!=None:
+				raise ValueError(name+" already exists")
+			id = self.repo.create_blob(data)
+			treeBuilder.insert(name,id,pygit2.GIT_FILEMODE_BLOB)
 			return treeBuilder
+		else:
+			sub_dir_path = PATH_SEPERATOR.join(pathParts)
+			if name == "":
+				# We add to root
+				try:
+					last_commit = self.find_last_commit()
+					treeBuilder = self.repo.TreeBuilder(last_commit.tree)
+				except KeyError:
+					treeBuilder = self.repo.TreeBuilder()
+				treeBuilder = self.add_file(sub_dir_path,data,author,reason,treeBuilder)
+				treeId = treeBuilder.write()
+				self.new_commit(treeId,author,reason)
+			else:
+				# we add to a named dir
+				nextTree = self.repo.TreeBuilder()
+				nextTree = self.add_file(sub_dir_path,data,author,reason,nextTree)
+				treeId = nextTree.write()
+				treeBuilder.insert(name,treeId,pygit2.GIT_FILEMODE_TREE)
+				return treeBuilder
 
-#if(not os.path.isdir(PATH_TO_REPO)):
-#	pygit2.init_repository(PATH_TO_REPO,True)
-#repo = pygit2.Repository(PATH_TO_REPO)
-#
 #files = list_files("/")
 #
 #if len(files) < 1:
