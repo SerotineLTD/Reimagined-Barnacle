@@ -6,9 +6,12 @@ import sys
 import SocketServer
 import shutil
 from collections import deque
+from flask import Flask
 
 PATH_TO_REPO = "/tmp/gitstore.git"
 PATH_SEPERATOR = "/"
+
+app = Flask(__name__)
 
 class GitStore:
 	def __init__(self,path=PATH_TO_REPO):
@@ -74,4 +77,11 @@ class GitStore:
 				treeId = nextTree.write()
 				treeBuilder.insert(name,treeId,pygit2.GIT_FILEMODE_TREE)
 				return treeBuilder
+
+#HTTP handling stuff
+
+gitstore = GitStore(PATH_TO_REPO)
+@app.route("/")
+def getRoot():
+	return gitstore.list_files("/")
 
