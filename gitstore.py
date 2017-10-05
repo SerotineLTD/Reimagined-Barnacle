@@ -75,20 +75,3 @@ class GitStore:
 				treeBuilder.insert(name,treeId,pygit2.GIT_FILEMODE_TREE)
 				return treeBuilder
 
-#files = list_files("/")
-#
-#if len(files) < 1:
-#	data = '{"id":1}'
-#	add_file("/doc.json",data,pygit2.Signature('Sam Jones','sam@serotine.org'),'Adding test file')
-#	files = list_files("/")
-#
-#if len(files) < 2:
-#	data = '{"id":2,"joke":"My dog\'s got no nose."}'
-#	add_file("/jokes/joke.json",data,pygit2.Signature('Sam Jones','sam@serotine.org'),'Adding a joke')
-#	files = list_files("/")
-#
-#
-#
-#for fname in files:
-#	print "File: "+fname
-#sys.exit(0)
