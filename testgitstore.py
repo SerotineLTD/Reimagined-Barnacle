@@ -31,10 +31,12 @@ class TestGitStore(unittest.TestCase):
 		data = '{"id":42,"testString":"the quick brown fox"}'
 		self.gitstore.add_file("/testfile.json",data,author,"testing")
 		self.gitstore.add_file("/testfiletwo.json",data,author,"testing")
+		self.gitstore.add_file("/subdirectory/testfilethree.json",data,author,"testing")
 		files = self.gitstore.list_files("/")
-		self.assertTrue(len(files) == 2)
-		self.assertEqual("testfile.json",files[0])
-		self.assertEqual("testfiletwo.json",files[1])
+		self.assertTrue(len(files) == 3)
+		self.assertEqual("testfile.json",files[1])
+		self.assertEqual("testfiletwo.json",files[2])
+		self.assertEqual("subdirectory",files[0])
 
 
 if __name__ == '__main__':
