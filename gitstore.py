@@ -4,6 +4,7 @@ import pygit2
 import os
 import sys
 import SocketServer
+import shutil
 from collections import deque
 
 PATH_TO_REPO = "/tmp/gitstore.git"
@@ -18,6 +19,10 @@ class GitStore:
 
 	def author(self,name,email):
 		return pygit2.Signature(name,email)
+
+	def undefine(self):
+		if self.repoPath != None and os.path.isdir(self.repoPath) and self.repoPath != "/" and os.path.isfile(self.repoPath+"/HEAD"):
+			shutil.rmtree(self.repoPath)
 
 	def find_last_commit(self):
 		master = self.repo.lookup_reference("refs/heads/master")
