@@ -8,6 +8,7 @@ import shutil
 import json
 from collections import deque
 from flask import Flask
+from flask import request
 
 PATH_TO_REPO = "/tmp/gitstore.git"
 PATH_SEPERATOR = "/"
@@ -107,9 +108,14 @@ def getPath():
 	pathParts = path.split("/")
 	if pathParts[-1] == "":
 		return to_json(gitstore.list_files("/"))
-#	else
-#		return gitstore.get_file(path)
+	else:
+		return gitstore.get_file(path)
 
+@app.route("/data.json",methods=["POST"])
+def postPath():
+		data = json.dumps(request.get_json())
+		gitstore.add_file("/data.json",data,gitstore.author("Bobby","bob@example.org"),"Test Rest")
+		return data
 
 def to_json(data):
 	return json.dumps(data, sort_keys=True, indent=2)
