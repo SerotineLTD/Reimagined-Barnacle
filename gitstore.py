@@ -9,11 +9,19 @@ import json
 from collections import deque
 from flask import Flask
 from flask import request
+from werkzeug.routing import BaseConverter
 
 PATH_TO_REPO = "/tmp/gitstore.git"
 PATH_SEPERATOR = "/"
 
 app = Flask(__name__)
+
+class RegexConverter(BaseConverter):
+	def __init__(self,url_map, *items):
+		super(RegexConverter, self).__init__(url_map)
+		self.regex = items[0]
+
+app.url_map.converters['regex'] = RegexConverter
 
 class GitStore:
 	def __init__(self,path=PATH_TO_REPO):
@@ -102,20 +110,24 @@ class GitStore:
 #HTTP handling stuff
 
 gitstore = GitStore(PATH_TO_REPO)
-@app.route("/")
-def getPath():
-	path = "/"
+@app.route('/<regex(".*"):path>', methods=['GET'])
+def getPath(path):
+	path = "/"+path
 	pathParts = path.split("/")
 	if pathParts[-1] == "":
 		return to_json(gitstore.list_files("/"))
 	else:
 		return gitstore.get_file(path)
 
-@app.route("/data.json",methods=["POST"])
-def postPath():
-		data = json.dumps(request.get_json())
-		gitstore.add_file("/data.json",data,gitstore.author("Bobby","bob@example.org"),"Test Rest")
-		return data
+@app.route('/<regex(".*"):path>', methods=['POST'])
+def postPath(path):
+	path = "/"+path
+	data = json.dumps(request.get_json())
+	gitstore.add_file(path,data,gitstore.author("Bobby","bob@example.org"),"Test Rest")
+	return data
 
 def to_json(data):
 	return json.dumps(data, sort_keys=True, indent=2)
+
+if __name__ == '__main__':
+	app.run(debug=True, host='0.0.0.0', port=5000)
