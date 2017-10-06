@@ -42,15 +42,24 @@ class GitStore:
 		last_commit = master.get_object()
 		return last_commit
 
-	def list_files_objs(self,path):
-		try:
+	def list_files_objs(self,path,tree=None):
+		pathParts = deque(path.split(PATH_SEPERATOR))
+		if pathParts[-1] != "":
+			pathParts.push("")
+		name = pathParts.popleft()
+		if tree==None:
 			last_commit = self.find_last_commit()
+			tree = last_commit.tree
+		if len(pathParts) < 2:
 			files = []
-			for entry in last_commit.tree:
+			for entry in tree:
 				files.append(entry)
 			return files
-		except KeyError:
-			return []
+		else:
+			for entry in tree:
+				if entry.name == name:
+					subPath = PATH_SEPERATOR.join(pathParts)
+					return gitstore.list_files_objs(subPath,entry.tree)
 
 	def list_files(self,path):
 		files = self.list_files_objs(path)
