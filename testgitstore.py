@@ -38,6 +38,12 @@ class TestGitStore(unittest.TestCase):
 		self.assertEqual("testfiletwo.json",files[2])
 		self.assertEqual("subdirectory",files[0])
 
+	def test_get_file(self):
+		author = self.gitstore.author('Bob Carmack','bob@example.org')
+		data = '{"id":45,"testString":"the quick brown fox"}'
+		self.gitstore.add_file("/testget.json",data,author,"testing")
+		returnData = self.gitstore.get_file("/testget.json")
+		self.assertEqual(data,returnData)
 
 if __name__ == '__main__':
     unittest.main()

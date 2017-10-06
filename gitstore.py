@@ -5,6 +5,7 @@ import os
 import sys
 import SocketServer
 import shutil
+import json
 from collections import deque
 from flask import Flask
 
@@ -32,15 +33,22 @@ class GitStore:
 		last_commit = master.get_object()
 		return last_commit
 
-	def list_files(self,path):
+	def list_files_objs(self,path):
 		try:
 			last_commit = self.find_last_commit()
 			files = []
 			for entry in last_commit.tree:
-				files.append(entry.name)
+				files.append(entry)
 			return files
 		except KeyError:
 			return []
+
+	def list_files(self,path):
+		files = self.list_files_objs(path)
+		fileNames = []
+		for entry in files:
+			fileNames.append(entry.name)
+		return fileNames
 
 	def new_commit(self,treeId,author,reason):
 		try:
@@ -78,10 +86,30 @@ class GitStore:
 				treeBuilder.insert(name,treeId,pygit2.GIT_FILEMODE_TREE)
 				return treeBuilder
 
+	def get_file(self,path):
+		pathParts = path.split(PATH_SEPERATOR)
+		filename = pathParts.pop()
+		dirPath = PATH_SEPERATOR.join(pathParts)
+		files = gitstore.list_files_objs(dirPath)
+		targetFile = None
+		for fileObj in files:
+			if fileObj.name == filename:
+				return gitstore.repo.read(fileObj.id)[1]
+		
+		
+
 #HTTP handling stuff
 
 gitstore = GitStore(PATH_TO_REPO)
 @app.route("/")
-def getRoot():
-	return gitstore.list_files("/")
+def getPath():
+	path = "/"
+	pathParts = path.split("/")
+	if pathParts[-1] == "":
+		return to_json(gitstore.list_files("/"))
+#	else
+#		return gitstore.get_file(path)
 
+
+def to_json(data):
+	return json.dumps(data, sort_keys=True, indent=2)
