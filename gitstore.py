@@ -104,7 +104,11 @@ class GitStore:
 				self.new_commit(treeId,author,reason)
 			else:
 				# we add to a named dir
-				nextTree = self.repo.TreeBuilder()
+				nextTree = None
+				if treeBuilder.get(name) == None:
+					nextTree = self.repo.TreeBuilder()
+				else:
+					nextTree = self.repo.TreeBuilder(gitstore.repo.get(treeBuilder.get(name).id))
 				nextTree = self.add_file(sub_dir_path,data,author,reason,nextTree)
 				treeId = nextTree.write()
 				treeBuilder.insert(name,treeId,pygit2.GIT_FILEMODE_TREE)
