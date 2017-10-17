@@ -43,14 +43,14 @@ class GitStore:
 		return last_commit
 
 	def list_files_objs(self,path,tree=None):
-		print "list_files_objs("+path+")"
+#		print "list_files_objs("+path+")"
 		if path == "/" or path == "":
 			if tree==None:
 				last_commit = self.find_last_commit()
 				tree = last_commit.tree
 			files = []
 			for entry in tree:
-				print "Appending "+entry.name
+#				print "Appending "+entry.name
 				files.append(entry)
 			return files
 		else:
@@ -61,7 +61,7 @@ class GitStore:
 				pathParts.popleft()
 			name = pathParts.popleft()
 			for entry in tree:
-				print "tree entry: "+entry.name
+#				print "tree entry: "+entry.name
 				if entry.name == name:
 					subPath = PATH_SEPERATOR.join(pathParts)
 					subTree = gitstore.repo.get(entry.id).peel(pygit2.Tree)
