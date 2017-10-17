@@ -114,6 +114,42 @@ class GitStore:
 				treeBuilder.insert(name,treeId,pygit2.GIT_FILEMODE_TREE)
 				return treeBuilder
 
+	def delete_file(self,path, author,reason,treeBuilder=None):
+		print "delete_file("+path+")"
+		pathParts = deque(path.split(PATH_SEPERATOR))
+		if treeBuilder==None:
+			#We're at the start
+			if path == "/" or path == "" or path == None:
+				raise ValueError("Invalid path")
+			else:
+				try:
+					last_commit = self.find_last_commit()
+					treeBuilder = self.repo.TreeBuilder(last_commit.tree)
+				except KeyError:
+					treeBuilder = self.repo.TreeBuilder()
+				if pathParts[0]=="":
+					pathParts.popleft()
+				subPath = PATH_SEPERATOR.join(pathParts)
+				self.delete_file(subPath,author,reason,treeBuilder)
+				treeId = treeBuilder.write()
+				self.new_commit(treeId,author,reason)
+		else:
+			#We're mid recurse.
+			if len(pathParts) == 0 :
+				raise ValueError("Invalid path")
+			if len(pathParts) == 1 or (len(pathParts)==2 and pathParts[1] == ""):
+				treeBuilder.remove(pathParts[0])
+			else:
+				if pathParts[0]=="":
+					pathParts.popleft()
+				name = pathParts.popleft()
+				nextFolder = treeBuilder.get(name)
+				nextTreeBuilder = self.repo.TreeBuilder(gitstore.repo.get(nextFolder.id))
+				subPath = PATH_SEPERATOR.join(pathParts)
+				self.delete_file(subPath,author,reason,nextTreeBuilder)
+				tree = nextTreeBuilder.write()
+				treeBuilder.insert(name,tree,pygit2.GIT_FILEMODE_TREE)
+
 	def get_file(self,path):
 		pathParts = path.split(PATH_SEPERATOR)
 		filename = pathParts.pop()
@@ -143,6 +179,19 @@ def postPath(path):
 	path = "/"+path
 	data = json.dumps(request.get_json())
 	gitstore.add_file(path,data,gitstore.author("Bobby","bob@example.org"),"Test Rest")
+	return data
+
+@app.route('/v1.0/<regex(".*"):path>', methods=['DELETE'])
+def delPath(path):
+	path = "/"+path
+	gitstore.delete_file(path,gitstore.author("Bobby","bob@example.org"),"Test Rest")
+	return ("Deleted\n", 200, None)
+
+@app.route('/v1.0/<regex(".*"):path>', methods=['PATCH'])
+def patchPath(path):
+	path = "/"+path
+	data = json.dumps(request.get_json())
+#	gitstore.add_file(path,data,gitstore.author("Bobby","bob@example.org"),"Test Rest")
 	return data
 
 def to_json(data):
