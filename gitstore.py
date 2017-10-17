@@ -43,23 +43,29 @@ class GitStore:
 		return last_commit
 
 	def list_files_objs(self,path,tree=None):
-		pathParts = deque(path.split(PATH_SEPERATOR))
-		if pathParts[-1] != "":
-			pathParts.push("")
-		name = pathParts.popleft()
-		if tree==None:
-			last_commit = self.find_last_commit()
-			tree = last_commit.tree
-		if len(pathParts) < 2:
+		print "list_files_objs("+path+")"
+		if path == "/" or path == "":
+			if tree==None:
+				last_commit = self.find_last_commit()
+				tree = last_commit.tree
 			files = []
 			for entry in tree:
+				print "Appending "+entry.name
 				files.append(entry)
 			return files
 		else:
+			pathParts = deque(path.split(PATH_SEPERATOR))
+			if pathParts[0] == "":
+				last_commit = self.find_last_commit()
+				tree = last_commit.tree
+				pathParts.popleft()
+			name = pathParts.popleft()
 			for entry in tree:
+				print "tree entry: "+entry.name
 				if entry.name == name:
 					subPath = PATH_SEPERATOR.join(pathParts)
-					return gitstore.list_files_objs(subPath,entry.tree)
+					subTree = gitstore.repo.get(entry.id).peel(pygit2.Tree)
+					return gitstore.list_files_objs(subPath,subTree)
 
 	def list_files(self,path):
 		files = self.list_files_objs(path)
@@ -119,16 +125,16 @@ class GitStore:
 #HTTP handling stuff
 
 gitstore = GitStore(PATH_TO_REPO)
-@app.route('/<regex(".*"):path>', methods=['GET'])
+@app.route('/v1.0/<regex(".*"):path>', methods=['GET'])
 def getPath(path):
 	path = "/"+path
 	pathParts = path.split("/")
 	if pathParts[-1] == "":
-		return to_json(gitstore.list_files("/"))
+		return to_json(gitstore.list_files(path))
 	else:
 		return gitstore.get_file(path)
 
-@app.route('/<regex(".*"):path>', methods=['POST'])
+@app.route('/v1.0/<regex(".*"):path>', methods=['POST'])
 def postPath(path):
 	path = "/"+path
 	data = json.dumps(request.get_json())
