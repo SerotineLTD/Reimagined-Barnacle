@@ -115,7 +115,7 @@ class GitStore:
 				return treeBuilder
 
 	def delete_file(self,path, author,reason,treeBuilder=None):
-		print "delete_file("+path+")"
+		#print "delete_file("+path+")"
 		pathParts = deque(path.split(PATH_SEPERATOR))
 		if treeBuilder==None:
 			#We're at the start
@@ -147,6 +147,53 @@ class GitStore:
 				nextTreeBuilder = self.repo.TreeBuilder(gitstore.repo.get(nextFolder.id))
 				subPath = PATH_SEPERATOR.join(pathParts)
 				self.delete_file(subPath,author,reason,nextTreeBuilder)
+				tree = nextTreeBuilder.write()
+				treeBuilder.insert(name,tree,pygit2.GIT_FILEMODE_TREE)
+
+	def patch_file(self,path, changeSet ,author,reason,treeBuilder=None):
+		#print "patch_file("+path+")"
+		pathParts = deque(path.split(PATH_SEPERATOR))
+		if treeBuilder==None:
+			#We're at the start
+			if path == "/" or path == "" or path == None:
+				raise ValueError("Invalid path")
+			else:
+				try:
+					last_commit = self.find_last_commit()
+					treeBuilder = self.repo.TreeBuilder(last_commit.tree)
+				except KeyError:
+					treeBuilder = self.repo.TreeBuilder()
+				if pathParts[0]=="":
+					pathParts.popleft()
+				subPath = PATH_SEPERATOR.join(pathParts)
+				self.patch_file(subPath,changeSet,author,reason,treeBuilder)
+				treeId = treeBuilder.write()
+				self.new_commit(treeId,author,reason)
+		else:
+			#We're mid recurse.
+			if len(pathParts) == 0 :
+				raise ValueError("Invalid path")
+			if len(pathParts) == 1 or (len(pathParts)==2 and pathParts[1] == ""):
+				#print "Let's search the treebuilder for "+pathParts[0]
+				originalData = gitstore.repo.read(treeBuilder.get(pathParts[0]).id)[1]
+				#print "Original JSON:\n"+originalData+"\n\nPatch JSON:\n"+changeSet
+				doc = json.loads(originalData)
+				changes = json.loads(changeSet)
+				for key in changes.keys():
+					doc[key]=changes[key]
+				newJson = json.dumps(doc)
+				# print "Resulting JSON:\n"+newJson
+				id = self.repo.create_blob(newJson)
+				treeBuilder.insert(pathParts[0],id,pygit2.GIT_FILEMODE_BLOB)
+				
+			else:
+				if pathParts[0]=="":
+					pathParts.popleft()
+				name = pathParts.popleft()
+				nextFolder = treeBuilder.get(name)
+				nextTreeBuilder = self.repo.TreeBuilder(gitstore.repo.get(nextFolder.id))
+				subPath = PATH_SEPERATOR.join(pathParts)
+				self.patch_file(subPath,changeSet,author,reason,nextTreeBuilder)
 				tree = nextTreeBuilder.write()
 				treeBuilder.insert(name,tree,pygit2.GIT_FILEMODE_TREE)
 
@@ -191,8 +238,8 @@ def delPath(path):
 def patchPath(path):
 	path = "/"+path
 	data = json.dumps(request.get_json())
-#	gitstore.add_file(path,data,gitstore.author("Bobby","bob@example.org"),"Test Rest")
-	return data
+	gitstore.patch_file(path,data,gitstore.author("Bobby","bob@example.org"),"Test Rest")
+	return gitstore.get_file(path)
 
 def to_json(data):
 	return json.dumps(data, sort_keys=True, indent=2)
