@@ -6,6 +6,7 @@ import sys
 import SocketServer
 import shutil
 import json
+import re
 from collections import deque
 from flask import Flask
 from flask import request
@@ -13,6 +14,7 @@ from werkzeug.routing import BaseConverter
 
 PATH_TO_REPO = "/tmp/gitstore.git"
 PATH_SEPERATOR = "/"
+COMMITTER_REGEX = re.compile("(.*?) ?<(.*)>")
 
 app = Flask(__name__)
 
@@ -225,21 +227,36 @@ def getPath(path):
 def postPath(path):
 	path = "/"+path
 	data = json.dumps(request.get_json())
-	gitstore.add_file(path,data,gitstore.author("Bobby","bob@example.org"),"Test Rest")
+	committer = parse_committer(request.headers['Committer'])
+	commitMessage = request.headers['Commit-Message']
+	gitstore.add_file(path,data,committer,commitMessage)
 	return data
 
 @app.route('/v1.0/<regex(".*"):path>', methods=['DELETE'])
 def delPath(path):
 	path = "/"+path
-	gitstore.delete_file(path,gitstore.author("Bobby","bob@example.org"),"Test Rest")
+	committer = parse_committer(request.headers['Committer'])
+	commitMessage = request.headers['Commit-Message']
+	gitstore.delete_file(path,committer,commitMessage)
 	return ("Deleted\n", 200, None)
 
 @app.route('/v1.0/<regex(".*"):path>', methods=['PATCH'])
 def patchPath(path):
 	path = "/"+path
 	data = json.dumps(request.get_json())
-	gitstore.patch_file(path,data,gitstore.author("Bobby","bob@example.org"),"Test Rest")
+	committer = parse_committer(request.headers['Committer'])
+	commitMessage = request.headers['Commit-Message']
+	gitstore.patch_file(path,data,committer,commitMessage)
 	return gitstore.get_file(path)
+
+def parse_committer(committerStr):
+	if committerStr == None or committerStr == "":
+		raise ValueError("No committer specified (did you set the Committer header)")
+	match = COMMITTER_REGEX.match(committerStr)
+	if match:
+		return gitstore.author(match.group(1),match.group(2))
+	else:
+		return gitstore.author(committerStr,"none@example.org")
 
 def to_json(data):
 	return json.dumps(data, sort_keys=True, indent=2)
