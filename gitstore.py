@@ -87,8 +87,8 @@ class GitStore:
 		pathParts = deque(path.split(PATH_SEPERATOR))
 		name = pathParts.popleft()
 		if len(pathParts) < 1:
-			if treeBuilder.get(name)!=None:
-				raise ValueError(name+" already exists")
+#			if treeBuilder.get(name)!=None:
+#				raise ValueError(name+" already exists")
 			id = self.repo.create_blob(data)
 			treeBuilder.insert(name,id,pygit2.GIT_FILEMODE_BLOB)
 			return treeBuilder

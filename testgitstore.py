@@ -47,6 +47,7 @@ class TestGitStore(unittest.TestCase):
 
 #TODO
 # * Test to catch get on repo that has not yet had first commit, should 404
+# * Test that adding a file that already exists *DOES* overwrite the file.
 
 if __name__ == '__main__':
     unittest.main()
