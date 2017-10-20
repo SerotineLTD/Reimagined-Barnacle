@@ -12,7 +12,7 @@ from flask import Flask
 from flask import request
 from werkzeug.routing import BaseConverter
 
-PATH_TO_REPO = "/tmp/gitstore.git"
+PATH_TO_REPO = "/srv/gitstore/gitstore.git"
 PATH_SEPERATOR = "/"
 COMMITTER_REGEX = re.compile("(.*?) ?<(.*)>")
 
@@ -221,7 +221,10 @@ def getPath(path):
 	if pathParts[-1] == "":
 		return to_json(gitstore.list_files(path))
 	else:
-		return gitstore.get_file(path)
+		try:
+			return gitstore.get_file(path)
+		except KeyError:
+			return ("Not found\n", 404,None)
 
 @app.route('/v1.0/<regex(".*"):path>', methods=['POST'])
 def postPath(path):

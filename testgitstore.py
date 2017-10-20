@@ -45,5 +45,8 @@ class TestGitStore(unittest.TestCase):
 		returnData = self.gitstore.get_file("/testget.json")
 		self.assertEqual(data,returnData)
 
+#TODO
+# * Test to catch get on repo that has not yet had first commit, should 404
+
 if __name__ == '__main__':
     unittest.main()
