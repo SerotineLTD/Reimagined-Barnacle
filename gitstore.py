@@ -47,13 +47,16 @@ class GitStore:
 	def list_files_objs(self,path,tree=None):
 #		print "list_files_objs("+path+")"
 		if path == "/" or path == "":
-			if tree==None:
-				last_commit = self.find_last_commit()
-				tree = last_commit.tree
 			files = []
-			for entry in tree:
-#				print "Appending "+entry.name
-				files.append(entry)
+			try:
+				if tree==None:
+					last_commit = self.find_last_commit()
+					tree = last_commit.tree
+				for entry in tree:
+	#				print "Appending "+entry.name
+					files.append(entry)
+			except KeyError:
+				print "No previous commit\n"
 			return files
 		else:
 			pathParts = deque(path.split(PATH_SEPERATOR))

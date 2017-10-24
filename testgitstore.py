@@ -45,6 +45,11 @@ class TestGitStore(unittest.TestCase):
 		returnData = self.gitstore.get_file("/testget.json")
 		self.assertEqual(data,returnData)
 
+	def test_list_empty_root(self):
+		files = self.gitstore.list_files("/")
+		self.assertTrue(len(files) == 0)
+		
+
 #TODO
 # * Test to catch get on repo that has not yet had first commit, should 404
 # * Test that adding a file that already exists *DOES* overwrite the file.
