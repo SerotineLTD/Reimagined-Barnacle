@@ -75,6 +75,8 @@ class GitStore:
 	def list_files(self,path):
 		files = self.list_files_objs(path)
 		fileNames = []
+		if files == None:
+			raise KeyError("Directory does not exist")
 		for entry in files:
 			fileNames.append(entry.name)
 		return fileNames
@@ -212,22 +214,23 @@ class GitStore:
 			if fileObj.name == filename:
 				return gitstore.repo.read(fileObj.id)[1]
 		
-		
+	def http_get_path(self,path):	
+		path = "/"+path
+		pathParts = path.split("/")
+		try:
+			if pathParts[-1] == "":
+				return (to_json(gitstore.list_files(path)),200,None)
+			else:
+				return (gitstore.get_file(path),200,None)
+		except KeyError:
+			return ("Not found\n", 404,None)
 
 #HTTP handling stuff
 
 gitstore = GitStore(PATH_TO_REPO)
 @app.route('/v1.0/<regex(".*"):path>', methods=['GET'])
 def getPath(path):
-	path = "/"+path
-	pathParts = path.split("/")
-	if pathParts[-1] == "":
-		return to_json(gitstore.list_files(path))
-	else:
-		try:
-			return gitstore.get_file(path)
-		except KeyError:
-			return ("Not found\n", 404,None)
+	return gitstore.http_get_path(path)
 
 @app.route('/v1.0/<regex(".*"):path>', methods=['POST'])
 def postPath(path):

@@ -48,10 +48,22 @@ class TestGitStore(unittest.TestCase):
 	def test_list_empty_root(self):
 		files = self.gitstore.list_files("/")
 		self.assertTrue(len(files) == 0)
+
+	def test_blank_repo_is_404(self):
+		doc,code,foo = self.gitstore.http_get_path("/")
+		self.assertEqual(404,code)
+
+	def test_missing_subdir_is_404(self):
+		author = self.gitstore.author('Bob Carmack','bob@example.org')
+		data = '{"id":42,"testString":"the quick brown fox"}'
+		self.gitstore.add_file("/testfile.json",data,author,"testing")
+		doc,code,foo = self.gitstore.http_get_path("/missingFolder/")
+		self.assertEqual(404,code)
+
+		
 		
 
 #TODO
-# * Test to catch get on repo that has not yet had first commit, should 404
 # * Test that adding a file that already exists *DOES* overwrite the file.
 
 if __name__ == '__main__':
