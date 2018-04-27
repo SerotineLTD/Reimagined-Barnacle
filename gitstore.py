@@ -224,6 +224,8 @@ class GitStore:
 				return (gitstore.get_file(path),200,None)
 		except KeyError:
 			return ("Not found\n", 404,None)
+		except ValueError:
+			return ("Not found\n", 404,None)
 
 #HTTP handling stuff
 
