@@ -213,6 +213,8 @@ class GitStore:
 		for fileObj in files:
 			if fileObj.name == filename:
 				return gitstore.repo.read(fileObj.id)[1]
+			else:
+				raise KeyError("No such file")
 		
 	def http_get_path(self,path):	
 		path = "/"+path
