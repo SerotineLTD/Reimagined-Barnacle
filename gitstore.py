@@ -214,8 +214,7 @@ class GitStore:
 			if fileObj.name == filename:
 #				print "Found the file: "+fileObj.id
 				return gitstore.repo.read(fileObj.id)[1]
-			else:
-				raise KeyError("No such file")
+		raise KeyError("No such file")
 		
 	def http_get_path(self,path):	
 		path = "/"+path

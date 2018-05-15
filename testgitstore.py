@@ -65,8 +65,8 @@ class TestGitStore(unittest.TestCase):
 		data = '{"id":42,"testString":"the quick brown fox"}'
 		dataTwo = '{"id":34,"testString":"shit got real"}'
 		self.gitstore.add_file("/testfile.json",data,author,"testing")
-		self.gitstore.add_file("/testfiletwo.json",data,author,"testing")
-		doc,code,foo = self.gitstore.http_get_path("testfiletwo.json")
+		self.gitstore.add_file("/testfiletwo.json",dataTwo,author,"testing")
+		doc,code,foo = self.gitstore.http_get_path("/testfiletwo.json")
 		self.assertEqual(200,code)
 		self.assertEqual(dataTwo,doc)
 
