@@ -60,6 +60,16 @@ class TestGitStore(unittest.TestCase):
 		doc,code,foo = self.gitstore.http_get_path("/missingFolder/")
 		self.assertEqual(404,code)
 
+	def test_get_second_file_in_list(self):
+		author = self.gitstore.author('Bob Carmack','bob@example.org')
+		data = '{"id":42,"testString":"the quick brown fox"}'
+		dataTwo = '{"id":34,"testString":"shit got real"}'
+		self.gitstore.add_file("/testfile.json",data,author,"testing")
+		self.gitstore.add_file("/testfiletwo.json",data,author,"testing")
+		doc,code,foo = self.gitstore.http_get_path("testfiletwo.json")
+		self.assertEqual(200,code)
+		self.assertEqual(dataTwo,doc)
+
 		
 		
 

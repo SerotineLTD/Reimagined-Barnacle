@@ -212,6 +212,7 @@ class GitStore:
 		targetFile = None
 		for fileObj in files:
 			if fileObj.name == filename:
+#				print "Found the file: "+fileObj.id
 				return gitstore.repo.read(fileObj.id)[1]
 			else:
 				raise KeyError("No such file")
