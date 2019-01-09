@@ -215,19 +215,28 @@ class GitStore:
 #				print "Found the file: "+fileObj.id
 				return gitstore.repo.read(fileObj.id)[1]
 		raise KeyError("No such file")
+
+	def standard_respose_headers(self):
+		responseHeaders = {}
+		try:
+			responseHeaders["Last-Commit"] = self.find_last_commit().id
+		except KeyError:
+			pass
+		return responseHeaders
 		
 	def http_get_path(self,path):	
 		path = "/"+path
 		pathParts = path.split("/")
+		responseHeaders = self.standard_respose_headers()
 		try:
 			if pathParts[-1] == "":
-				return (to_json(gitstore.list_files(path)),200,None)
+				return (to_json(gitstore.list_files(path)),200,responseHeaders)
 			else:
-				return (gitstore.get_file(path),200,None)
+				return (gitstore.get_file(path),200,responseHeaders)
 		except KeyError:
-			return ("Not found\n", 404,None)
+			return ("Not found\n", 404,responseHeaders)
 		except ValueError:
-			return ("Not found\n", 404,None)
+			return ("Not found\n", 404,responseHeaders)
 
 #HTTP handling stuff
 
@@ -243,7 +252,8 @@ def postPath(path):
 	committer = parse_committer(request.headers['Committer'])
 	commitMessage = request.headers['Commit-Message']
 	gitstore.add_file(path,data,committer,commitMessage)
-	return data
+	responseHeaders = gitstore.standard_respose_headers()
+	return (data,201,responseHeaders)
 
 @app.route('/v1.0/<regex(".*"):path>', methods=['DELETE'])
 def delPath(path):
@@ -251,7 +261,8 @@ def delPath(path):
 	committer = parse_committer(request.headers['Committer'])
 	commitMessage = request.headers['Commit-Message']
 	gitstore.delete_file(path,committer,commitMessage)
-	return ("Deleted\n", 200, None)
+	responseHeaders = gitstore.standard_respose_headers()
+	return ("Deleted\n", 200, responseHeaders)
 
 @app.route('/v1.0/<regex(".*"):path>', methods=['PATCH'])
 def patchPath(path):
