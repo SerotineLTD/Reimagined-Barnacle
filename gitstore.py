@@ -7,6 +7,7 @@ import SocketServer
 import shutil
 import json
 import re
+import subprocess
 from collections import deque
 from flask import Flask
 from flask import request
@@ -87,6 +88,9 @@ class GitStore:
 			self.repo.create_commit('refs/heads/master',author,author,reason,treeId,[last_commit.id])
 		except KeyError:
 			self.repo.create_commit('refs/heads/master',author,author,reason,treeId,[])
+		commitHookFile = PATH_TO_REPO+"/hooks/post-commit"
+		if(os.path.exists(commitHookFile)):
+			subprocess.call([commitHookFile])
 
 	def add_file(self,path,data,author,reason,treeBuilder=None):
 		pathParts = deque(path.split(PATH_SEPERATOR))
