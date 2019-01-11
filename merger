@@ -1,0 +1,21 @@
+#!/usr/bin/python
+
+import os
+import subprocess
+
+FNULL = open(os.devnull, 'w')
+branchname = subprocess.check_output("cat /dev/urandom | tr -cd 'a-f0-9' | head -c 32",stderr=FNULL,shell=True)
+print branchname
+branch_check_code = subprocess.call("git branch | grep "+branchname,stderr=FNULL,shell=True)
+if(branch_check_code != "0"):
+	exit
+if(os.path.exists(branchname)):
+	exit
+create_worktree_code = subprocess.call("git worktree add "+branchname,shell=True)
+os.chdir(branchname)
+checkout_code = subprocess.call("git checkout master",shell=True)
+pull_code = subprocess.call("git pull",shell=True)
+os.chdir("..")
+rm_code = subprocess.call("rm -rf "+branchname,shell=True)
+prune_code = subprocess.call("git worktree prune",shell=True)
+branch_remove_code = subprocess.call("git branch -D "+branchname,shell=True)
