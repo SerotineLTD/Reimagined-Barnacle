@@ -90,6 +90,7 @@ class GitStore:
 			self.repo.create_commit('refs/heads/master',author,author,reason,treeId,[])
 		commitHookFile = PATH_TO_REPO+"/hooks/post-commit"
 		if(os.path.exists(commitHookFile)):
+			os.chdir(PATH_TO_REPO)
 			subprocess.call([commitHookFile])
 
 	def add_file(self,path,data,author,reason,treeBuilder=None):
