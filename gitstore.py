@@ -8,6 +8,7 @@ import shutil
 import json
 import re
 import subprocess
+from multiprocessing import Process
 from collections import deque
 from flask import Flask
 from flask import request
@@ -16,6 +17,8 @@ from werkzeug.routing import BaseConverter
 PATH_TO_REPO = "/srv/gitstore/gitstore.git"
 PATH_SEPERATOR = "/"
 COMMITTER_REGEX = re.compile("(.*?) ?<(.*)>")
+
+running_post_commit_process = None
 
 app = Flask(__name__)
 
@@ -82,7 +85,13 @@ class GitStore:
 			fileNames.append(entry.name)
 		return fileNames
 
+	def run_post_commit(self,directory):
+		commitHookFile = directory+"/hooks/post-commit"
+		os.chdir(directory)
+		subprocess.call([commitHookFile])
+
 	def new_commit(self,treeId,author,reason):
+		global running_post_commit_process
 		try:
 			last_commit = self.find_last_commit()
 			self.repo.create_commit('refs/heads/master',author,author,reason,treeId,[last_commit.id])
@@ -90,8 +99,15 @@ class GitStore:
 			self.repo.create_commit('refs/heads/master',author,author,reason,treeId,[])
 		commitHookFile = PATH_TO_REPO+"/hooks/post-commit"
 		if(os.path.exists(commitHookFile)):
-			os.chdir(PATH_TO_REPO)
-			subprocess.call([commitHookFile])
+			start_post_commit_process = False
+			if(running_post_commit_process == None):
+				start_post_commit_process = True
+			if(running_post_commit_process != None and not running_post_commit_process.is_alive()):
+				start_post_commit_process = True
+
+			if(start_post_commit_process):
+				running_post_commit_process = Process(target=self.run_post_commit,args=[PATH_TO_REPO])
+				running_post_commit_process.start()
 
 	def add_file(self,path,data,author,reason,treeBuilder=None):
 		pathParts = deque(path.split(PATH_SEPERATOR))
@@ -256,8 +272,9 @@ def postPath(path):
 	data = json.dumps(request.get_json())
 	committer = parse_committer(request.headers['Committer'])
 	commitMessage = request.headers['Commit-Message']
-	gitstore.add_file(path,data,committer,commitMessage)
 	responseHeaders = gitstore.standard_respose_headers()
+	gitstore.add_file(path,data,committer,commitMessage)
+	responseHeaders["This-Commit"] = gitstore.find_last_commit().id
 	return (data,201,responseHeaders)
 
 @app.route('/v1.0/<regex(".*"):path>', methods=['DELETE'])
@@ -265,8 +282,9 @@ def delPath(path):
 	path = "/"+path
 	committer = parse_committer(request.headers['Committer'])
 	commitMessage = request.headers['Commit-Message']
-	gitstore.delete_file(path,committer,commitMessage)
 	responseHeaders = gitstore.standard_respose_headers()
+	gitstore.delete_file(path,committer,commitMessage)
+	responseHeaders["This-Commit"] = gitstore.find_last_commit().id
 	return ("Deleted\n", 200, responseHeaders)
 
 @app.route('/v1.0/<regex(".*"):path>', methods=['PATCH'])
@@ -275,7 +293,9 @@ def patchPath(path):
 	data = json.dumps(request.get_json())
 	committer = parse_committer(request.headers['Committer'])
 	commitMessage = request.headers['Commit-Message']
+	responseHeaders = gitstore.standard_respose_headers()
 	gitstore.patch_file(path,data,committer,commitMessage)
+	responseHeaders["This-Commit"] = gitstore.find_last_commit().id
 	return gitstore.get_file(path)
 
 def parse_committer(committerStr):
