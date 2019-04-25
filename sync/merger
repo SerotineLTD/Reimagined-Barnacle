@@ -2,6 +2,13 @@
 
 import os
 import subprocess
+import sys
+
+REPO_PATH = "/srv/gitstore/gitstore.git"
+os.chdir(REPO_PATH)
+remote = ""
+if len(sys.argv):
+	remote = " "+sys.argv[1]+" master"
 
 FNULL = open(os.devnull, 'w')
 branchname = subprocess.check_output("cat /dev/urandom | tr -cd 'a-f0-9' | head -c 32",stderr=FNULL,shell=True)
@@ -14,7 +21,7 @@ if(os.path.exists(branchname)):
 create_worktree_code = subprocess.call("git worktree add "+branchname,shell=True)
 os.chdir(branchname)
 checkout_code = subprocess.call("git checkout master",shell=True)
-pull_code = subprocess.call("git pull",shell=True)
+pull_code = subprocess.call("git pull"+remote,shell=True)
 os.chdir("..")
 rm_code = subprocess.call("rm -rf "+branchname,shell=True)
 prune_code = subprocess.call("git worktree prune",shell=True)

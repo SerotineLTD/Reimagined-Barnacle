@@ -1,0 +1,137 @@
+#!/usr/bin/python
+
+import os
+import subprocess
+import pprint
+import json
+import zc.lockfile
+import calendar
+import time
+import re
+
+pp = pprint.PrettyPrinter(indent=2)
+FNULL = open(os.devnull, 'w')
+
+RUN_PATH = "/tmp/gscs"
+LOCK_FILE = RUN_PATH+"/check-status.lock"
+STATUS_FILE = RUN_PATH+"/status"
+REPO_PATH = "/srv/gitstore/gitstore.git"
+#SSH_OPTIONS = "-o ConnectTimeout=1 -o StrictHostKeyChecking=no"
+SSH_OPTIONS = "-o ConnectTimeout=1"
+
+COMMIT_HISTORY_COUNT = 10
+
+GIT_REMOTES_REGEX = re.compile("(.*?)\t(.*?)@(.*?):(.*?) ")
+
+os.chdir(REPO_PATH)
+gitremotes = subprocess.check_output("git remote -v | grep '(fetch)'",stderr=FNULL,shell=True)
+peers = {}
+for gitremote in gitremotes.splitlines():
+	match = GIT_REMOTES_REGEX.match(gitremote)
+	if match:
+		peer = {}
+		peer["remote_name"] = match.group(1)
+		peer["remote_user"] = match.group(2)
+		host = match.group(3)
+		peer["repo_path"] = match.group(4)
+		peers[host]=peer
+
+#peers = {
+#	'two.example.org':{
+#		"remote_name":"two",
+#		"remote_user":"root",
+#		"repo_path":"/srv/gitstore/gitstore.git"
+#	},
+#	'three.example.org':{
+#		"remote_name":"three",
+#		"remote_user":"root",
+#		"repo_path":"/srv/gitstore/gitstore.git"
+#	},
+#}
+
+if not os.path.exists(RUN_PATH):
+	os.makedirs(RUN_PATH)
+
+lock = None
+try:
+	lock = zc.lockfile.LockFile(LOCK_FILE)
+
+	totalNodes = 1+len(peers.keys())
+	consistentNodes = 1
+	
+	localCommitHashOutput = subprocess.check_output("git log -"+str(COMMIT_HISTORY_COUNT)+" --pretty=%H",stderr=FNULL,shell=True)
+	localCommits = localCommitHashOutput.splitlines()
+	
+	for peer in peers.keys():
+		remotesHashes = subprocess.check_output("ssh "+SSH_OPTIONS+" "+peers[peer]["remote_user"]+"@"+peer+" 'cd "+peers[peer]["repo_path"]+" && git log -"+str(COMMIT_HISTORY_COUNT)+" --pretty=%H'",stderr=FNULL,shell=True)
+		peers[peer]["hashes"] = remotesHashes.splitlines()
+	
+	for peer in peers.keys():
+		if peers[peer]["hashes"][0] == localCommits[0]:
+			peers[peer]["result"] = "match"
+			consistentNodes = consistentNodes +1
+		else:
+			historic_match = False
+			index = 1
+			remote_hashes = peers[peer]["hashes"]
+			while not historic_match and index < len(remote_hashes):
+				if remote_hashes[index] == localCommits[0]:
+					historic_match = True
+				else:
+					index = index + 1
+			if historic_match:
+				peers[peer]["result"] = "behind"
+			else:
+				peers[peer]["result"] = "inconsistent"
+				
+	
+
+	data = {}
+	if os.path.exists(STATUS_FILE):
+		statusFile = open(STATUS_FILE,'r')
+		data = json.loads(statusFile.read())
+		
+
+	if (consistentNodes*2)>totalNodes:
+		data["last-status"]="consistent"
+		data["last-consistent"] = calendar.timegm(time.gmtime())
+	else:
+		data["last-status"]="inconsistent"
+		data["last-inconsistent"] = calendar.timegm(time.gmtime())
+
+	statusFile = open(STATUS_FILE,'w')
+	statusFile.write(json.dumps(data))
+	statusFile.close()
+
+	for peer in peers.keys():
+		if peers[peer]["result"] == "behind":
+			remoteRepo = peers[peer]["remote_name"]
+			try:
+				p =subprocess.Popen("/usr/local/bin/merger "+remoteRepo,shell=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+				if p.returncode != 0:
+					print "Couldn't pull from "+remoteRepo+": "+p.stdout.read()
+			except Exception, e:
+				print "Couldn't pull from "+remoteRepo+": "+str(e)
+
+except zc.lockfile.LockError:
+	print("Couldn't lock file: "+LOCK_FILE+" is another instance running?")
+	exit()
+else:
+	lock.close()
+
+# 1) check lock file, exit if process already exists
+# 2) create lock file
+# 3) get list of peers
+# 4) get list of local hashes
+# 5) get list of hashes for each peer
+# 6) for each peer
+# 6.1) is our hash the same as their most recent hash?
+# 6.1.1) yes: then we're consistent with this host
+# 6.1.2) no: does it match one of their historic hashes?
+# 6.1.2.1) yes: then we're behind them and should pull their changes
+# 6.1.2.2) no: not consistent with them
+# 7) if we're consistent with more than half the other nodes, we mark ourselves as consisent
+# 8) if we're not consistent mark ourselves as behind and we attempt to pull from the nodes we're behind
+# 9) if we're not able to pull from the nodes we're behind we mark ourselves as inconsistent.
+# 10) we wait the poll interval before repeating from step 3
+

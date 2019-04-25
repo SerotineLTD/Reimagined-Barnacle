@@ -15,6 +15,7 @@ from flask import request
 from werkzeug.routing import BaseConverter
 
 PATH_TO_REPO = "/srv/gitstore/gitstore.git"
+STATUS_PATH = "/tmp/gscs/status"
 PATH_SEPERATOR = "/"
 COMMITTER_REGEX = re.compile("(.*?) ?<(.*)>")
 
@@ -239,6 +240,15 @@ class GitStore:
 
 	def standard_respose_headers(self):
 		responseHeaders = {}
+		if os.path.exists(STATUS_PATH):
+			try:
+				status_file = open(STATUS_PATH,'r')
+				status_data = status_file.read()
+				status_file.close()
+				status_json = json.loads(status_data)
+				responseHeaders["Node-Status"] = status_json["last-status"]
+			except:
+				print "Couldn't read status file "+STATUS_PATH
 		try:
 			responseHeaders["Last-Commit"] = self.find_last_commit().id
 		except KeyError:
