@@ -21,7 +21,8 @@ SSH_OPTIONS = "-o ConnectTimeout=1"
 
 COMMIT_HISTORY_COUNT = 10
 
-GIT_REMOTES_REGEX = re.compile("(.*?)\t(.*?)@(.*?):(.*?) ")
+#GIT_REMOTES_REGEX = re.compile("(.*?)\t(.*?)@(.*?):(.*?) ")
+GIT_REMOTES_REGEX = re.compile("(.*?)\t(.*?)@(.*?):(\d*)?(/.*?) ")
 
 os.chdir(REPO_PATH)
 gitremotes = subprocess.check_output("git remote -v | grep '(fetch)'",stderr=FNULL,shell=True)
@@ -33,7 +34,8 @@ for gitremote in gitremotes.splitlines():
 		peer["remote_name"] = match.group(1)
 		peer["remote_user"] = match.group(2)
 		host = match.group(3)
-		peer["repo_path"] = match.group(4)
+		peer["port"] = match.group(4)
+		peer["repo_path"] = match.group(5)
 		peers[host]=peer
 
 #peers = {
@@ -63,7 +65,10 @@ try:
 	localCommits = localCommitHashOutput.splitlines()
 	
 	for peer in peers.keys():
-		remotesHashes = subprocess.check_output("ssh "+SSH_OPTIONS+" "+peers[peer]["remote_user"]+"@"+peer+" 'cd "+peers[peer]["repo_path"]+" && git log -"+str(COMMIT_HISTORY_COUNT)+" --pretty=%H'",stderr=FNULL,shell=True)
+		ssh_options = SSH_OPTIONS
+		if peer["port"] != None and peer["port"] != "":
+			ssh_options = ssh_options + " -p "+peer["port"]
+		remotesHashes = subprocess.check_output("ssh "+ssh_options+" "+peers[peer]["remote_user"]+"@"+peer+" 'cd "+peers[peer]["repo_path"]+" && git log -"+str(COMMIT_HISTORY_COUNT)+" --pretty=%H'",stderr=FNULL,shell=True)
 		peers[peer]["hashes"] = remotesHashes.splitlines()
 	
 	for peer in peers.keys():
