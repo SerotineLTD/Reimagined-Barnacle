@@ -66,8 +66,8 @@ try:
 	
 	for peer in peers.keys():
 		ssh_options = SSH_OPTIONS
-		if peer["port"] != None and peer["port"] != "":
-			ssh_options = ssh_options + " -p "+peer["port"]
+		if peers[peer]["port"] != None and peers[peer]["port"] != "":
+			ssh_options = ssh_options + " -p "+peers[peer]["port"]
 		remotesHashes = subprocess.check_output("ssh "+ssh_options+" "+peers[peer]["remote_user"]+"@"+peer+" 'cd "+peers[peer]["repo_path"]+" && git log -"+str(COMMIT_HISTORY_COUNT)+" --pretty=%H'",stderr=FNULL,shell=True)
 		peers[peer]["hashes"] = remotesHashes.splitlines()
 	
