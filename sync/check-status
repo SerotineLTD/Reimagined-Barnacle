@@ -109,7 +109,7 @@ try:
 	statusFile.close()
 
 	for peer in peers.keys():
-		if peers[peer]["result"] == "behind":
+		if peers[peer]["result"] == "behind" or peers[peer]["result"] == "inconsistent":
 			remoteRepo = peers[peer]["remote_name"]
 			try:
 				p =subprocess.Popen("/usr/local/bin/merger "+remoteRepo,shell=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
