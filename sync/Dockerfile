@@ -2,7 +2,6 @@ FROM gitstore
 
 RUN apt update && apt -y install openssh-server cron
 RUN pip install zc.lockfile
-
 COPY merger /usr/local/bin/merger
 COPY check-status /usr/local/bin/check-status
 RUN ssh-keygen -t rsa -N "" -f /root/.ssh/id_rsa && cp /root/.ssh/id_rsa.pub /root/.ssh/authorized_keys
