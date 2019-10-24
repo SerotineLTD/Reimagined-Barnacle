@@ -46,7 +46,7 @@ class GitStore:
 
 	def find_last_commit(self):
 		master = self.repo.lookup_reference("refs/heads/master")
-		last_commit = master.get_object()
+		last_commit = master.peel()
 		return last_commit
 
 	def list_files_objs(self,path,tree=None):
